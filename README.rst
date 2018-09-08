@@ -1,3 +1,6 @@
+STILL IN VERY EARLY DEVELOPMENT - DO NOT INSTALL THIS VERSION
+=============================================================
+
 QTPyLib, Pythonic Algorithmic Trading
 =====================================
 
