@@ -4,7 +4,7 @@
 # QTPyLib: Quantitative Trading Python Library
 # https://github.com/ranaroussi/qtpylib
 #
-# Copyright 2016-2018 Ran Aroussi
+# Copyright 2016-2019 Ran Aroussi
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -101,6 +101,8 @@ class Algo(Broker):
             IB TWS/GW Client ID (default: 998)
         ibserver: str
             IB TWS/GW Server hostname (default: localhost)
+        ibaccount : str
+            Specific IB accunt to use (default: None / IB Default)
     """
 
     __metaclass__ = ABCMeta
@@ -109,7 +111,8 @@ class Algo(Broker):
                  tick_window=1, bar_window=100, timezone="UTC", preload=None,
                  continuous=True, blotter=None, sms=None, log=None,
                  backtest=False, start=None, end=None, data=None, output=None,
-                 ibclient=998, ibport=4001, ibserver="localhost", **kwargs):
+                 ibclient=998, ibport=4001, ibserver="localhost",
+                 ibaccount=None, **kwargs):
 
         # detect algo name
         self.name = str(self.__class__).split('.')[-1].split("'")[0]
@@ -137,6 +140,8 @@ class Algo(Broker):
         self.tick_bar_count = 0
         self.bar_count = 0
         self.bar_hashes = {}
+        self.last_time_bar = pd.Timestamp(datetime(
+            datetime.today().year-1, 1, 1), tz=timezone)
 
         self.tick_window = tick_window if tick_window > 0 else 1
         if "V" in resolution:
@@ -192,7 +197,7 @@ class Algo(Broker):
         # initiate broker/order manager
         super().__init__(instruments, **{
             arg: val for arg, val in self.args.items() if arg in (
-                'ibport', 'ibclient', 'ibhost')})
+                'ibport', 'ibclient', 'ibserver', 'ibaccount')})
 
         # -----------------------------------
         # signal collector
@@ -204,7 +209,7 @@ class Algo(Broker):
         # initilize output file
         self.record_ts = None
         if self.record_output:
-            self.datastore = tools.DataStore(self.args["output"])
+            self.recorder = tools.Recorder(self.args["output"])
 
         # ---------------------------------------
         # add stale ticks for more accurate time--based bars
@@ -215,7 +220,6 @@ class Algo(Broker):
         # ---------------------------------------
         # be aware of thread count
         self.threads = asynctools.multitasking.getPool(__name__)['threads']
-
 
     # ---------------------------------------
     def add_stale_tick(self):
@@ -257,6 +261,8 @@ class Algo(Broker):
                             help='IB TWS/GW Client ID', type=int)
         parser.add_argument('--ibserver', default=self.args["ibserver"],
                             help='IB TWS/GW Server hostname')
+        parser.add_argument('--ibaccount', default=self.args['ibaccount'],
+                            help='Specific IB account to use', required=False)
         parser.add_argument('--sms', default=self.args["sms"],
                             help='Numbers to text orders', nargs='+')
         parser.add_argument('--log', default=self.args["log"],
@@ -324,7 +330,7 @@ class Algo(Broker):
 
                     dfs.append(df)
 
-                except Exception as e:
+                except Exception:
                     self.log_algo.error(
                         "Error reading data for %s (%s)", symbol, file)
                     sys.exit(0)
@@ -380,7 +386,8 @@ class Algo(Broker):
         # optimize pandas
         if not history.empty:
             history['symbol'] = history['symbol'].astype('category')
-            history['symbol_group'] = history['symbol_group'].astype('category')
+            history['symbol_group'] = history['symbol_group'
+                                              ].astype('category')
             history['asset_class'] = history['asset_class'].astype('category')
 
         if self.backtest:
@@ -580,6 +587,8 @@ class Algo(Broker):
                 Is this an iceberg (hidden) order
             tif: str
                 Time in force (DAY, GTC, IOC, GTD). default is ``DAY``
+            account : str
+                Specific IB accunt to use (default: None / IB Default)
         """
         self.log_algo.debug('ORDER: %s %4d %s %s', signal,
                             quantity, symbol, kwargs)
@@ -596,7 +605,7 @@ class Algo(Broker):
 
             try:
                 self.record({symbol+'_POSITION': 0})
-            except Exception as e:
+            except Exception:
                 pass
 
             if not self.backtest:
@@ -618,7 +627,7 @@ class Algo(Broker):
                 if kwargs['direction'] != "BUY":
                     quantity = -quantity
                 self.record({symbol+'_POSITION': quantity})
-            except Exception as e:
+            except Exception:
                 pass
 
             if not self.backtest:
@@ -651,8 +660,8 @@ class Algo(Broker):
         """
         if self.record_output:
             try:
-                self.datastore.record(self.record_ts, *args, **kwargs)
-            except Exception as e:
+                self.recorder.record(self.record_ts, *args, **kwargs)
+            except Exception:
                 pass
 
     # ---------------------------------------
@@ -686,14 +695,14 @@ class Algo(Broker):
         del book['kind']
 
         self.books[symbol] = book
-        self.on_orderbook(self.get_instrument(symbol))
+        self.on_orderbook(self.instrument(symbol))
 
     # ---------------------------------------
     @asynctools.multitasking.task
     def _quote_handler(self, quote):
         del quote['kind']
         self.quotes[quote['symbol']] = quote
-        self.on_quote(self.get_instrument(quote))
+        self.on_quote(self.instrument(quote))
 
     # ---------------------------------------
     @staticmethod
@@ -704,8 +713,8 @@ class Algo(Broker):
             dfs.append(df[df['symbol'] == sym][-window:])
         return pd.concat(dfs, sort=True).sort_index()
 
-
     # ---------------------------------------
+
     @staticmethod
     def _thread_safe_merge(symbol, basedata, newdata):
         data = newdata
@@ -723,7 +732,7 @@ class Algo(Broker):
         try:
             return data.dropna(subset=[
                 'open', 'high', 'low', 'close', 'volume'])
-        except Exception as e:
+        except Exception:
             return data
 
     # ---------------------------------------
@@ -784,17 +793,19 @@ class Algo(Broker):
             if self.ticks[(self.ticks['symbol'] == symbol) | (
                     self.ticks['symbol_group'] == symbol)].empty:
                 return
-            tick_instrument = self.get_instrument(tick)
+            tick_instrument = self.instrument(tick)
             if tick_instrument:
                 self.on_tick(tick_instrument)
 
     # ---------------------------------------
     def _base_bar_handler(self, bar):
-        """ non threaded bar handler (called by threaded _tick_handler) """
+        """ non threaded bar handler (called by _tick_handler) """
+
         # bar symbol
         symbol = bar['symbol'].values
         if len(symbol) == 0:
             return
+
         symbol = symbol[0]
         self_bars = self.bars.copy()  # work on copy
 
@@ -834,8 +845,10 @@ class Algo(Broker):
         # optimize pandas
         if len(self.bars) == 1:
             self.bars['symbol'] = self.bars['symbol'].astype('category')
-            self.bars['symbol_group'] = self.bars['symbol_group'].astype('category')
-            self.bars['asset_class'] = self.bars['asset_class'].astype('category')
+            self.bars['symbol_group'] = self.bars['symbol_group'].astype(
+                'category')
+            self.bars['asset_class'] = self.bars['asset_class'].astype(
+                'category')
 
         # new bar?
         hash_string = bar[:1]['symbol'].to_string().translate(
@@ -851,12 +864,33 @@ class Algo(Broker):
             if self.bars[(self.bars['symbol'] == symbol) | (
                     self.bars['symbol_group'] == symbol)].empty:
                 return
-            bar_instrument = self.get_instrument(symbol)
-            if bar_instrument:
-                self.record_ts = bar.index[0]
-                self.on_bar(bar_instrument)
-                # if self.resolution[-1] not in ("S", "K", "V"):
-                self.record(bar)
+            """
+            if TIME-BASED bars AND algo symbol count > 1:
+                # pass none; trader should call instrument constructure:
+                # >>> self.instrument('ES')...
+                self.on_bar(None)
+            else:
+                # pass instrument; trader can use instrument:
+                self.on_bar(self.instrument(symbol))
+            """
+            self.record_ts = bar.index[0]
+            if self.resolution[-1] not in ("K", "V") and len(self.symbols) > 1:
+                if self.record_ts > self.last_time_bar:
+                    self.last_time_bar = bar.index[0]
+                    self.on_bar(None)
+                    self.record(bar)
+            else:
+                bar_instrument = self.instrument(symbol)
+                if bar_instrument:
+                    self.on_bar(bar_instrument)
+                    self.record(bar)
+
+            # bar_instrument = self.instrument(symbol)
+            # if bar_instrument:
+            #     self.record_ts = bar.index[0]
+            #     self.on_bar(bar_instrument)
+            #     # if self.resolution[-1] not in ("S", "K", "V"):
+            #     self.record(bar)
 
     # ---------------------------------------
     @asynctools.multitasking.task
@@ -876,7 +910,7 @@ class Algo(Broker):
             tz = str(df.index.tz)
             # try:
             #     tz = str(df.index.tz)
-            # except Exception as e:
+            # except Exception:
             #     tz = None
             df = tools.resample(df, resolution=resolution, tz=tz)
 
