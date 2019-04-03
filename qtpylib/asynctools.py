@@ -4,7 +4,7 @@
 # QTPyLib: Quantitative Trading Python Library
 # https://github.com/ranaroussi/qtpylib
 #
-# Copyright 2016-2019 Ran Aroussi
+# Copyright 2016-2018 Ran Aroussi
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,8 +53,8 @@ class multitasking():
             name = cls.__POOL_NAME__
 
         return {
-            "engine": "thread" if cls.__POOLS__[
-                cls.__POOL_NAME__]["engine"] == Thread else "process",
+            "engine": "thread" if cls.__POOLS__[cls.__POOL_NAME__
+                                                ]["engine"] == Thread else "process",
             "name": name,
             "threads": cls.__POOLS__[cls.__POOL_NAME__]["threads"]
         }
@@ -64,12 +64,12 @@ class multitasking():
 
         cls.__POOL_NAME__ = name
 
-        # if threads is None:
-        #     threads = cls.__CPU_CORES__
+        if threads is None:
+            threads == cls.__CPU_CORES__
 
         try:
             threads = int(threads)
-        except Exception:
+        except Exception as e:
             threads = 1
 
         # 1 thread is no threads
@@ -102,8 +102,7 @@ class multitasking():
             # has threads
             if not cls.__KILL_RECEIVED__:
                 task = cls.__POOLS__[cls.__POOL_NAME__]['engine'](
-                    target=_run_via_pool, args=args, kwargs=kwargs,
-                    daemon=False)
+                    target=_run_via_pool, args=args, kwargs=kwargs, daemon=False)
                 cls.__TASKS__.append(task)
                 task.start()
                 return task
@@ -120,14 +119,12 @@ class multitasking():
             return True
 
         try:
-            running = len([
-                t.join(1) for t in cls.__TASKS__
-                if t is not None and t.isAlive()])
+            running = len([t.join(1)
+                           for t in cls.__TASKS__ if t is not None and t.isAlive()])
             while running > 0:
-                running = len([
-                    t.join(1) for t in cls.__TASKS__
-                    if t is not None and t.isAlive()])
-        except Exception:
+                running = len(
+                    [t.join(1) for t in cls.__TASKS__ if t is not None and t.isAlive()])
+        except Exception as e:
             pass
         return True
 

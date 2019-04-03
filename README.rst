@@ -1,3 +1,8 @@
+STILL IN VERY EARLY DEVELOPMENT - DO NOT INSTALL THIS VERSION
+=============================================================
+
+Please refer to the ``master`` or ``develop`` branches for now.
+
 QTPyLib, Pythonic Algorithmic Trading
 =====================================
 

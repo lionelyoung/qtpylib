@@ -6,9 +6,6 @@ Market Data retrieval is done by a piece of software called a
 Interactive Brokers via TWS/IB), handles incoming market data
 and passes it to the algo for processing.
 
-Blotters optionally (but usually) also take care of storing the market
-data in a Database for later analysis, back-testing new strategies, etc.
-
 In QTPyLib's case, the Blotter handle all of the above, while your
 algorithms subscribe to the Blotter's updates via pub/sub
 mechanism using ZeroMQ - a blazing fast Message Queue.
@@ -21,18 +18,6 @@ mechanism using ZeroMQ - a blazing fast Message Queue.
     Simply put: **do not run multiple Blotters unless you have
     a very specific reason to do so.**
 
-
------
-
-Creating the Database
----------------------
-
-The first thing you need to do is to create the MySQL database
-where your Blotter will store tick and minute data for later use.
-
-Once you've created the database, note its name for the next step.
-**The Blotter will automatically create the required database tables
-when it runs for the first time.**
 
 -----
 
@@ -55,12 +40,8 @@ and TWS/IBGW port and run it.
 
     if __name__ == "__main__":
         blotter = MainBlotter(
-            dbhost    = "localhost", # MySQL server
-            dbname    = "qtpy",      # MySQL database
-            dbuser    = "master",    # MySQL username
-            dbpass    = "blaster",   # MySQL password
-            ibport    = 4001,        # IB port (7496/7497 = TWS, 4001 = IBGateway)
-            orderbook = True         # fetch and stream order book data
+            ibport    = 4001,  # IB port (7496/7497 = TWS, 4001 = IBGateway)
+            orderbook = True   # fetch and stream order book data
         )
 
         blotter.run()
@@ -117,14 +98,8 @@ or via CLI:
 - ``--ibserver`` IB TWS/GW Server hostname (default: ``localhost``)
 - ``--zmqport`` ZeroMQ Port to use (default: ``12345``)
 - ``--zmqtopic`` ZeroMQ string to use (default: ``_qtpylib_BLOTTERNAME_``)
-- ``--dbhost`` MySQL server hostname (default: ``localhost``)
-- ``--dbport`` MySQL server port (default: ``3306``)
-- ``--dbname`` MySQL server database (default: ``qtpy``)
-- ``--dbuser`` MySQL server username (default: ``root``)
-- ``--dbpass`` MySQL server password (default: ``None``)
-- ``--dbskip`` [flag] Skip MySQL logging of market data (default: ``False``)
+- ``--threads`` Maximum number of threads to use (default is # of CPU cores)
 - ``--orderbook`` [flag] Tells the blotter to fetch and stream order book data (default: ``False``)
-- ``--threads`` Maximum number of threads to use (default is 1)
 
 .. note::
 
