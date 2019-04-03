@@ -49,15 +49,17 @@ trading logic itself and ignore everything else.
 Features
 ========
 
+- **Full-featured event-based backtester with a beautiful and insightful performance report.**
 - A continuously-running Blotter that lets you capture market data even when your algos aren't running.
-- Tick, Bar and Trade data is stored in MySQL for later analysis and backtesting.
+- Tick, Bar and Trade data is stored in either `PyStore <https://github.com/ranaroussi/pystore>`_, `MySQL <https://www.mysql.com/>`_ or `PostgreSQL <https://www.postgresql.org>`_ databases for later analysis and backtesting.
 - Using pub/sub architecture using `ØMQ <http://zeromq.org>`_ (ZeroMQ) for communicating between the Algo and the Blotter allows for a single Blotter/multiple Algos running on the same machine.
 - **Support for Order Book, Quote, Time, Tick or Volume based strategy resolutions**.
 - Includes many common indicators that you can seamlessly use in your algorithm.
 - **Market data events use asynchronous, non-blocking architecture**.
 - Have orders delivered to your mobile via SMS (requires a `Nexmo <https://www.nexmo.com/>`_ or `Twilio <https://www.twilio.com/>`_ account).
 - Full integration with `TA-Lib <http://ta-lib.org>`_ via dedicated module (`see documentation <http://qtpylib.io/docs/latest/indicators.html#ta-lib-integration>`_).
-- Ability to import any Python library (such as `scikit-learn <http://scikit-learn.org>`_ or `TensorFlow <https://www.tensorflow.org>`_) to use them in your algorithms.
+- Ability to import any Python library (such as `scikit-learn <http://scikit-learn.org>`_) to use them in your algorithms.
+- **Support for Interactive Brokers' Financial Advisot and Individual accounts with sub-accounts!**
 
 -----
 
@@ -87,7 +89,13 @@ To get started, you need to first create a Blotter script:
         pass # we just need the name
 
     if __name__ == "__main__":
-        blotter = MainBlotter()
+        blotter = MainBlotter(
+            # to store data in MySQL, use:
+            # datastore='mysql://root:password@localhost/qtpylib'
+
+            # to store data in PyStore, use:
+            # datastore='pystore://path/to/datastore'
+        )
         blotter.run()
 
 Then, with IB TWS/GW running, run the Blotter from the command line:
@@ -142,8 +150,8 @@ While the Blotter running in the background, write and execute your algorithm:
                 return
 
             # compute averages using internal rolling_mean
-            bars['short_ma'] = bars['close'].rolling_mean(window=10)
-            bars['long_ma']  = bars['close'].rolling_mean(window=20)
+            bars['short_ma'] = bars['close'].rolling(window=10).mean()
+            bars['long_ma']  = bars['close'].rolling(window=20).mean()
 
             # get current position data
             positions = instrument.get_positions()
@@ -185,10 +193,10 @@ To run your algo in a **live** enviroment, from the command line, type:
 
 .. code:: bash
 
-    $ python strategy.py --logpath ~/qtpy/
+    $ python strategy.py --logpath ~/logs/
 
 
-The resulting trades be saved in ``~/qtpy/STRATEGY_YYYYMMDD.csv`` for later analysis.
+The resulting trades be saved in ``~/logs/STRATEGY_YYYYMMDD.csv`` for later analysis.
 
 
 3. Viewing Live Trades
@@ -245,20 +253,31 @@ Requirements
 ------------
 
 * `Python <https://www.python.org>`_ >=3.4
-* `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.18.1)
+* `Pandas <https://github.com/pydata/pandas>`_ (tested to work with >=0.22.4)
 * `Numpy <https://github.com/numpy/numpy>`_ (tested to work with >=1.11.1)
 * `PyZMQ <https://github.com/zeromq/pyzmq>`_ (tested to work with >=15.2.1)
-* `PyMySQL <https://github.com/PyMySQL/PyMySQL>`_ (tested to work with >=0.7.6)
 * `pytz <http://pytz.sourceforge.net>`_ (tested to work with >=2016.6.1)
 * `dateutil <https://pypi.python.org/pypi/python-dateutil>`_ (tested to work with >=2.5.1)
 * `Nexmo-Python <https://github.com/Nexmo/nexmo-python>`_ for SMS support (tested to work with >=1.2.0)
 * `Twilio-Python <https://github.com/twilio/twilio-python>`_ for SMS support (tested to work with >=5.4.0)
 * `Flask <http://flask.pocoo.org>`_ for the Dashboard (tested to work with >=0.11)
 * `Requests <https://github.com/kennethreitz/requests>`_ (tested to work with >=2.10.0)
-* `IbPy2 <https://github.com/blampe/IbPy>`_ (tested to work with >=0.8.0)
-* `ezIBpy <https://github.com/ranaroussi/ezibpy>`_ (IbPy wrapper, tested to work with >=1.12.66)
+* `ezIBpy <https://github.com/ranaroussi/ezibpy>`_ (IbPy wrapper, tested to work with >=1.12.67)
 * Latest Interactive Brokers’ `TWS <https://www.interactivebrokers.com/en/index.php?f=15875>`_ or `IB Gateway <https://www.interactivebrokers.com/en/index.php?f=16457>`_ installed and running on the machine
-* `MySQL Server <https://www.mysql.com/>`_ installed and running with a database for QTPyLib
+
+\
+
+**If you plan on storing market data in a database, you'll need either:**
+
+PyStore (Fast data store for Pandas timeseries data)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* `PyStore <https://github.com/ranaroussi/pystore>`_ (tested to work with >=0.1.6)
+* `Snappy <http://google.github.io/snappy/>`_ (Google's compression/decompression library)
+
+SQL Database
+~~~~~~~~~~~~
+* `SQLAlchemy <https://www.sqlalchemy.org>`_ (tested to work with >=1.3.0)
+* `MySQL Server <https://www.mysql.com/>`_ or `PostgreSQL Server <https://www.postgresql.org>`_ installed
 
 -----
 

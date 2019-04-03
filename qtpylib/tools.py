@@ -4,7 +4,7 @@
 # QTPyLib: Quantitative Trading Python Library
 # https://github.com/ranaroussi/qtpylib
 #
-# Copyright 2016-2018 Ran Aroussi
+# Copyright 2016-2019 Ran Aroussi
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,6 +36,9 @@ from dateutil import relativedelta
 from dateutil.parser import parse as parse_date
 from pytz import timezone
 
+from pathlib import Path
+from importlib import import_module, machinery
+
 # for re-export
 from ezibpy.utils import (
     createLogger, contract_expiry_from_symbol,
@@ -49,6 +52,20 @@ decimal.getcontext().prec = 5
 if sys.version_info < (3, 4):
     raise SystemError("QTPyLib requires Python version >= 3.4")
 # =============================================
+
+
+def dynamic_import(module, class_name=None):
+    """ dynamically import module and class """
+    if Path(module).is_file():
+        module_name = module.split('/')[-1].replace('.py', '')
+        loader = machinery.SourceFileLoader(module_name, module)
+        module_object = loader.load_module(module_name)
+    else:
+        module_object = import_module(module)
+    if class_name:
+        target_class = getattr(module_object, class_name)
+        return target_class
+    return module_object
 
 
 class make_object:
@@ -80,8 +97,9 @@ def multi_shift(df, window):
 
     dfs = [df.shift(i) for i in np.arange(window)]
     for ix, df_item in enumerate(dfs[1:]):
-        dfs[ix + 1].columns = [str(col) for col in df_item.columns + str(ix + 1)]
-    return pd.concat(dfs, 1, sort=True) #.apply(list, 1)
+        dfs[ix + 1].columns = [str(col)
+                               for col in df_item.columns + str(ix + 1)]
+    return pd.concat(dfs, 1, sort=True)  # .apply(list, 1)
 
 # ---------------------------------------------
 
@@ -161,10 +179,11 @@ def create_ib_tuple(instrument):
                     expiry = futures.get_active_contract(symdata[1])
 
                 instrument = (spec['symbol'].upper(), "FUT",
-                              spec['exchange'].upper(), spec['currency'].upper(),
-                              int(expiry), 0.0, "")
+                              spec['exchange'].upper(
+                ), spec['currency'].upper(),
+                    int(expiry), 0.0, "")
 
-            except Exception as e:
+            except Exception:
                 raise ValueError("Un-parsable contract tuple")
 
     # tuples without strike/right
@@ -183,7 +202,7 @@ def create_ib_tuple(instrument):
 
         try:
             instrument_list[4] = int(instrument_list[4])
-        except Exception as e:
+        except Exception:
             pass
 
         instrument_list[5] = 0. if isinstance(instrument_list[5], str) \
@@ -257,8 +276,9 @@ def mark_options_values(data):
 # ---------------------------------------------
 
 def force_options_columns(data):
-    opt_cols = ['opt_price', 'opt_underlying', 'opt_dividend', 'opt_volume',
-                'opt_iv', 'opt_oi', 'opt_delta', 'opt_gamma', 'opt_vega', 'opt_theta']
+    opt_cols = ['opt_price', 'opt_underlying', 'opt_dividend',
+                'opt_volume', 'opt_iv', 'opt_oi', 'opt_delta',
+                'opt_gamma', 'opt_vega', 'opt_theta']
 
     if isinstance(data, dict):
         if not set(opt_cols).issubset(data.keys()):
@@ -295,11 +315,11 @@ def chmod(f):
     """ change mod to writeable """
     try:
         os.chmod(f, S_IWRITE)  # windows (cover all)
-    except Exception as e:
+    except Exception:
         pass
     try:
         os.chmod(f, 0o777)  # *nix
-    except Exception as e:
+    except Exception:
         pass
 
 
@@ -382,7 +402,7 @@ def backdate(res, date=None, as_datetime=False, fmt='%Y-%m-%d'):
     else:
         try:
             date = parse_date(date)
-        except Exception as e:
+        except Exception:
             pass
 
     new_date = date
@@ -460,7 +480,7 @@ def get_timezone(as_timedelta=False):
     """ utility to get the machine's timezone """
     try:
         offset_hour = -(time.altzone if time.daylight else time.timezone)
-    except Exception as e:
+    except Exception:
         offset_hour = -(datetime.datetime.now() -
                         datetime.datetime.utcnow()).seconds
 
@@ -508,13 +528,13 @@ def set_timezone(data, tz=None, from_local=False):
         try:
             try:
                 data.index = data.index.tz_convert(tz)
-            except Exception as e:
+            except Exception:
                 if from_local:
                     data.index = data.index.tz_localize(
                         get_timezone()).tz_convert(tz)
                 else:
                     data.index = data.index.tz_localize('UTC').tz_convert(tz)
-        except Exception as e:
+        except Exception:
             pass
 
     # not pandas...
@@ -524,9 +544,9 @@ def set_timezone(data, tz=None, from_local=False):
         try:
             try:
                 data = data.astimezone(tz)
-            except Exception as e:
+            except Exception:
                 data = timezone('UTC').localize(data).astimezone(timezone(tz))
-        except Exception as e:
+        except Exception:
             pass
 
     return data
@@ -582,13 +602,13 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
         # figure out timezone
         try:
             tz = data.index.tz if tz is None else tz
-        except Exception as e:
+        except Exception:
             pass
 
         if str(tz) != 'None':
             try:
                 data.index = data.index.tz_convert(tz)
-            except Exception as e:
+            except Exception:
                 data.index = data.index.tz_localize('UTC').tz_convert(tz)
 
         # sort by index (datetime)
@@ -604,10 +624,9 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
         return data
         # return data[~data.index.duplicated(keep='last')]
 
-
     def __resample_ticks(data, freq=1000, by='last'):
         """
-        function that re-samples tick data into an N-tick or N-volume OHLC format
+        function that re-samples tick data into an N-tick or N-volume OHLC
 
         df = pandas pd.dataframe of raw tick data
         freq = resoltuin grouping
@@ -620,13 +639,15 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
         try:
             df = data[['last', 'lastsize', 'opt_underlying', 'opt_price',
                        'opt_dividend', 'opt_volume', 'opt_iv', 'opt_oi',
-                       'opt_delta', 'opt_gamma', 'opt_theta', 'opt_vega']].copy()
+                       'opt_delta', 'opt_gamma', 'opt_theta', 'opt_vega']
+                      ].copy()
             price_col = 'last'
             size_col = 'lastsize'
-        except Exception as e:
+        except Exception:
             df = data[['close', 'volume', 'opt_underlying', 'opt_price',
                        'opt_dividend', 'opt_volume', 'opt_iv', 'opt_oi',
-                       'opt_delta', 'opt_gamma', 'opt_theta', 'opt_vega']].copy()
+                       'opt_delta', 'opt_gamma', 'opt_theta', 'opt_vega']
+                      ].copy()
             price_col = 'close'
             size_col = 'volume'
 
@@ -725,7 +746,7 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
 
                 # cleanup
                 symdata.dropna(inplace=True, subset=[
-                                'open', 'high', 'low', 'close', 'volume'])
+                    'open', 'high', 'low', 'close', 'volume'])
                 if sym[-3:] in ("OPT", "FOP"):
                     symdata.dropna(inplace=True)
 
@@ -746,7 +767,7 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
 
                 # cleanup
                 symdata.dropna(inplace=True, subset=[
-                                'open', 'high', 'low', 'close', 'volume'])
+                    'open', 'high', 'low', 'close', 'volume'])
                 if sym[-3:] in ("OPT", "FOP"):
                     symdata.dropna(inplace=True)
 
@@ -826,18 +847,21 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
                     # no fill / return original index
                     if ffill:
                         symdata['open'] = np.where(symdata['volume'] <= 0,
-                                                    symdata['close'], symdata['open'])
+                                                   symdata['close'],
+                                                   symdata['open'])
                         symdata['high'] = np.where(symdata['volume'] <= 0,
-                                                    symdata['close'], symdata['high'])
+                                                   symdata['close'],
+                                                   symdata['high'])
                         symdata['low'] = np.where(symdata['volume'] <= 0,
-                                                    symdata['close'], symdata['low'])
+                                                  symdata['close'],
+                                                  symdata['low'])
                     else:
                         symdata['open'] = np.where(symdata['volume'] <= 0,
-                                                    np.nan, symdata['open'])
+                                                   np.nan, symdata['open'])
                         symdata['high'] = np.where(symdata['volume'] <= 0,
-                                                    np.nan, symdata['high'])
+                                                   np.nan, symdata['high'])
                         symdata['low'] = np.where(symdata['volume'] <= 0,
-                                                    np.nan, symdata['low'])
+                                                  np.nan, symdata['low'])
                         symdata['close'] = np.where(symdata['volume'] <= 0,
                                                     np.nan, symdata['close'])
 
@@ -849,11 +873,11 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
             symdata['symbol_group'] = meta_data[meta_data.index ==
                                                 sym]['symbol_group'].values[0]
             symdata['asset_class'] = meta_data[meta_data.index ==
-                                                sym]['asset_class'].values[0]
+                                               sym]['asset_class'].values[0]
 
             # cleanup
             symdata.dropna(inplace=True, subset=[
-                            'open', 'high', 'low', 'close', 'volume'])
+                'open', 'high', 'low', 'close', 'volume'])
             if sym[-3:] in ("OPT", "FOP"):
                 symdata.dropna(inplace=True)
 
@@ -869,7 +893,7 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
 # store event in a temp data store
 # =============================================
 
-class DataStore():
+class Recorder():
 
     def __init__(self, output_file=None):
         self.auto = None
@@ -919,7 +943,6 @@ class DataStore():
         if "symbol" not in recorded.columns:
             return
 
-
         # group by symbol
         recorded['datetime'] = recorded.index
         data = recorded.groupby(['symbol', 'datetime'], as_index=False).sum()
@@ -927,7 +950,6 @@ class DataStore():
 
         symbols = data['symbol'].unique().tolist()
         data.drop(columns=['symbol'], inplace=True)
-
 
         # cleanup:
 
@@ -942,7 +964,7 @@ class DataStore():
                     recorded.columns.str.startswith(sym + '_OPT_')].tolist()
                 if len(opt_cols) == len(recorded[opt_cols].isnull().all()):
                     recorded.drop(opt_cols, axis=1, inplace=True)
-            except Exception as e:
+            except Exception:
                 pass
 
         # group df
