@@ -353,13 +353,17 @@ class Blotter():
     def on_ohlc_received(self, msg, kwargs):
         symbol = self.ibConn.tickerSymbol(msg.reqId)
 
+        #print('lyalgox3->broker_backfill.9->ohlc.1')
         if kwargs["completed"]:
             self.backfilled_symbols.append(symbol)
             tickers = set(
                 {v: k for k, v in self.ibConn.tickerIds.items() if v.upper() != "SYMBOL"}.keys())
-            if tickers == set(self.backfilled_symbols):
-                self.backfilled = True
-                print(".")
+            print('lydebug|tickers={}|set(self.backfilled_symbols)={}'.format(tickers, set(self.backfilled_symbols)))
+            #if tickers == set(self.backfilled_symbols):
+            for ticker in tickers:
+                if ticker in set(self.backfilled_symbols):
+                    self.backfilled = True
+                    print(".")
 
             try:
                 self.ibConn.cancelHistoricalData(
@@ -1132,6 +1136,7 @@ class Blotter():
                 False for "won't backfill" / True for "backfilling, please wait"
         """
 
+        print('lyalgox3->broker_backfill.1')
         data.sort_index(inplace=True)
 
         # currenly only supporting minute-data
@@ -1139,10 +1144,12 @@ class Blotter():
             self.backfilled = True
             return None
 
+        print('lyalgox3->broker_backfill.2')
         # missing history?
         start_date = parse_date(start)
         end_date = parse_date(end) if end else datetime.utcnow()
 
+        print('lyalgox3->broker_backfill.3')
         if data.empty:
             first_date = datetime.utcnow()
             last_date = datetime.utcnow()
@@ -1150,20 +1157,24 @@ class Blotter():
             first_date = tools.datetime64_to_datetime(data.index.values[0])
             last_date = tools.datetime64_to_datetime(data.index.values[-1])
 
+        print('lyalgox3->broker_backfill.4')
         ib_lookback = None
         if start_date < first_date:
             ib_lookback = tools.ib_duration_str(start_date)
         elif end_date > last_date:
             ib_lookback = tools.ib_duration_str(last_date)
 
+        print('lyalgox3->broker_backfill.5')
         if not ib_lookback:
             self.backfilled = True
             return None
 
+        print('lyalgox3->broker_backfill.6')
         self.backfill_resolution = "1 min" if resolution[-1] not in (
             "K", "V", "S") else "1 sec"
         self.log_blotter.warning("Backfilling historical data from IB...")
 
+        print('lyalgox3->broker_backfill.7')
         # request parameters
         params = {
             "lookback": ib_lookback,
@@ -1174,13 +1185,16 @@ class Blotter():
             "csv_path": None
         }
 
+        print('lyalgox3->broker_backfill.8')
         # if connection is active - request data
         self.ibConn.requestHistoricalData(**params)
 
+        print('lyalgox3->broker_backfill.9')
         # wait for backfill to complete
         while not self.backfilled:
             time.sleep(0.01)
 
+        print('lyalgox3->broker_backfill.10')
         # otherwise, pass the parameters to the caller
         return True
 

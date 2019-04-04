@@ -355,15 +355,19 @@ class Algo(Broker):
 
             # history needs backfilling?
             # self.blotter.backfilled = True
+            print('lyalgox1')
             if not self.blotter.backfilled:
+                print('lyalgox2')
                 # "loan" Blotter our ibConn
                 self.blotter.ibConn = self.ibConn
 
+                print('lyalgox3')
                 # call the back fill
                 self.blotter.backfill(data=history,
                                       resolution=self.resolution,
                                       start=start, end=end)
 
+                print('lyalgox4')
                 # re-get history from db
                 history = self.blotter.history(
                     symbols=self.symbols,
@@ -374,8 +378,11 @@ class Algo(Broker):
                     continuous=self.continuous
                 )
 
+                print('lyalgox5')
                 # take our ibConn back :)
                 self.blotter.ibConn = None
+
+        print('lyalgox6')
 
         # optimize pandas
         if not history.empty:
