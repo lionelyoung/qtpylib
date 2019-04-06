@@ -125,6 +125,9 @@ class Blotter():
                  dbuser="root", dbpass="", dbskip=False, orderbook=False,
                  zmqport="12345", zmqtopic=None, **kwargs):
 
+        # LY: Debug
+        self.ly_already_ran_print = False
+
         # whats my name?
         self.name = str(self.__class__).split('.')[-1].split("'")[0].lower()
         if name is not None:
@@ -318,6 +321,8 @@ class Blotter():
     # -------------------------------------------
     def ibCallback(self, caller, msg, **kwargs):
 
+        #print("ly debug blotter ibCallback 01|caller={}|msg={}|kwargs={}".format(caller, msg, pformat(kwargs)))
+
         if caller == "handleConnectionClosed":
             self.log_blotter.info("Lost connection to Interactive Brokers...")
             self._on_exit(terminate=False)
@@ -351,22 +356,30 @@ class Blotter():
             elif msg.errorCode not in (502, 504):  # connection error
                 self.log_blotter.error(
                     '[IB #%d] %s', msg.errorCode, msg.errorMsg)
+            # LY
+            elif msg.errorCode not in (162, ):  # historical data error
+                self.log_blotter.error(
+                    '[IB #%d] %s', msg.errorCode, msg.errorMsg)
 
     # -------------------------------------------
     def on_ohlc_received(self, msg, kwargs):
         symbol = self.ibConn.tickerSymbol(msg.reqId)
 
-        #print('lyalgox3->broker_backfill.9->ohlc.1')
+        # LY DEBUG
+        if not self.ly_already_ran_print or kwargs["completed"]:
+            print('lyalgox3->broker_backfill.9->ohlc.1 symbol: {} kwargs:{}'.format(symbol, pformat(kwargs)))
+            self.ly_already_ran_print = True
+
         if kwargs["completed"]:
             self.backfilled_symbols.append(symbol)
             tickers = set(
                 {v: k for k, v in self.ibConn.tickerIds.items() if v.upper() != "SYMBOL"}.keys())
             print('lydebug|tickers={}|set(self.backfilled_symbols)={}'.format(tickers, set(self.backfilled_symbols)))
-            #if tickers == set(self.backfilled_symbols):
-            for ticker in tickers:
-                if ticker in set(self.backfilled_symbols):
-                    self.backfilled = True
-                    print(".")
+            if tickers == set(self.backfilled_symbols):
+            #for ticker in tickers:
+                #if ticker in set(self.backfilled_symbols):
+                self.backfilled = True
+                print(".")
 
             try:
                 self.ibConn.cancelHistoricalData(

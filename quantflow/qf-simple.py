@@ -86,11 +86,14 @@ if __name__ == "__main__":
     symbol = "CL"
     print('Getting ready to run: {}'.format(symbol))
     print('Getting active contract')
-    ACTIVE_MONTH = futures.get_active_contract(symbol)
-    print("Active month for {} is: {}".format(symbol, ACTIVE_MONTH))
+    #ACTIVE_MONTH = futures.get_active_contract(symbol)
+    #print("Active month for {} is: {}".format(symbol, ACTIVE_MONTH))
 
+    ib_tuple = futures.make_tuple(symbol)
+    print("Tuple is {}".format(ib_tuple))
     strategy = CrossOver(
-        instruments = [ (symbol, "FUT", "GLOBEX", "USD", ACTIVE_MONTH, 0.0, "") ], # ib tuples
+        #instruments = [ (symbol, "FUT", "GLOBEX", "USD", ACTIVE_MONTH, 0.0, "") ], # ib tuples
+        instruments = [ ib_tuple, ],
         resolution  = "1T", # Pandas resolution (use "K" for tick bars)
         bar_window  = 50, # no. of bars to keep
         #preload     = "3D", # Beyond 3D seem to hang

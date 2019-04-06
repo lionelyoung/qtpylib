@@ -110,6 +110,7 @@ class Algo(Broker):
                  continuous=True, blotter=None, sms=None, log=None,
                  backtest=False, start=None, end=None, data=None, output=None,
                  ibclient=998, ibport=4001, ibserver="localhost", **kwargs):
+        print("ly algo.py 01 instruments: {}".format(instruments))
 
         # detect algo name
         self.name = str(self.__class__).split('.')[-1].split("'")[0]
