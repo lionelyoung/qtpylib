@@ -1,12 +1,15 @@
 from qtpylib.blotter import Blotter
 import configparser
+import os
+import sys
+BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 class MainBlotter(Blotter):
     pass # we just need the name
 
 if __name__ == "__main__":
     config = configparser.ConfigParser()
-    config.read('qfconfig.ini')
+    config.read(os.path.join(BASE_DIR, 'qfconfig.ini'))
     blotter = MainBlotter(
         dbhost    = config['quantflow']['dbhost'],
         dbname    = config['quantflow']['dbname'],
