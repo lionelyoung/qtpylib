@@ -15,3 +15,5 @@ Icon
 /tests
 .vscode
 nosy.py
+*.ini
+*.csv

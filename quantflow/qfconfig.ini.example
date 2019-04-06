@@ -1,0 +1,6 @@
+[quantflow]
+dbhost = localhost
+dbname = qtpy
+dbuser = user
+dbpass = pass
+ibport = 7497
