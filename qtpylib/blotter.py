@@ -372,18 +372,38 @@ class Blotter():
 
         if kwargs["completed"]:
             self.backfilled_symbols.append(symbol)
-            tickers = set(
-                {v: k for k, v in self.ibConn.tickerIds.items() if v.upper() != "SYMBOL"}.keys())
-            print('lydebug|tickers={}|set(self.backfilled_symbols)={}'.format(tickers, set(self.backfilled_symbols)))
+            tickers = list({v: k for k, v in self.ibConn.tickerIds.items() if v.upper() != "SYMBOL"}.keys())
+            print(tickers)
+
+            # LY debug, for some reason these are in
+            # Remove 'ES' and 'ES12019_FUT'
+            # Keep: 'ESM2019_FUT', 'CLK2019_FUT'
+            for ticker in tickers:
+                # Remove ES
+                if len(ticker) == 2:
+                    tickers.remove(ticker)
+
+                # Remove ES12019_FUT and xx1xxxxxxxx
+                if len(ticker) >= 3:
+                    print('ly debug ticker is {}|ticker[2] is {}'.format(ticker, ticker[2]))
+                    if ticker[2] == '1':
+                        tickers.remove(ticker)
+
+            tickers = set(tickers)
+            print('lydebug|tickers={}|backfilled={}|set(self.backfilled_symbols)={}'.format(tickers,
+                                                                                            self.backfilled_symbols,
+                                                                                            set(self.backfilled_symbols)))
             if tickers == set(self.backfilled_symbols):
             #for ticker in tickers:
                 #if ticker in set(self.backfilled_symbols):
                 self.backfilled = True
                 print(".")
+                print('ly debug: backfilled is true')
 
             try:
                 self.ibConn.cancelHistoricalData(
                     self.ibConn.contracts[msg.reqId])
+                print('ly debug: cancelled Historical data')
             except Exception as e:
                 pass
 
