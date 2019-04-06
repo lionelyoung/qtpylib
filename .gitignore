@@ -16,3 +16,4 @@ Icon
 .vscode
 nosy.py
 *.ini
+*.csv
