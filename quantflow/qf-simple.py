@@ -82,20 +82,20 @@ class CrossOver(Algo):
 
 
 if __name__ == "__main__":
-    print('Getting ready to run')
-
+    symbol = "ES"
+    symbol = "CL"
+    print('Getting ready to run: {}'.format(symbol))
     print('Getting active contract')
-    # get most active ES contract to trade
-    ACTIVE_MONTH = futures.get_active_contract("ES")
-    print("Active month for ES is:", ACTIVE_MONTH)
+    ACTIVE_MONTH = futures.get_active_contract(symbol)
+    print("Active month for {} is: {}".format(symbol, ACTIVE_MONTH))
 
     strategy = CrossOver(
-        instruments = [ ("ES", "FUT", "GLOBEX", "USD", ACTIVE_MONTH, 0.0, "") ], # ib tuples
+        instruments = [ (symbol, "FUT", "GLOBEX", "USD", ACTIVE_MONTH, 0.0, "") ], # ib tuples
         resolution  = "1T", # Pandas resolution (use "K" for tick bars)
-        #tick_window = 20, # no. of ticks to keep
         bar_window  = 50, # no. of bars to keep
         #preload     = "3D", # Beyond 3D seem to hang
-        preload     = "1W", # preload 1 day history when starting, use tools.backdate
+        #preload     = "1W", # preload 1 day history when starting, use tools.backdate
+        preload     = "1D", # preload 1 day history when starting, use tools.backdate
         ibport    = 7497,        # IB port (7496/7497 = TWS, 4001 = IBGateway)
         blotter='MainBlotter',
     )
@@ -104,5 +104,7 @@ if __name__ == "__main__":
     print('Finished')
 
 
+    # Other arguments
     #ibport    = 4002,        # IB port (7496/7497 = TWS, 4001 = IBGateway)
     #timezone    = "US/Central", # convert all ticks/bars to this timezone
+    #tick_window = 20, # no. of ticks to keep

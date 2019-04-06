@@ -56,6 +56,9 @@ from qtpylib import (
     tools, asynctools, path, futures, __version__
 )
 
+## LY pformat
+from pprint import pformat
+
 # =============================================
 # check min, python version
 if sys.version_info < (3, 4):
@@ -316,7 +319,7 @@ class Blotter():
     def ibCallback(self, caller, msg, **kwargs):
 
         if caller == "handleConnectionClosed":
-            self.log_blotter.info("Lost conncetion to Interactive Brokers...")
+            self.log_blotter.info("Lost connection to Interactive Brokers...")
             self._on_exit(terminate=False)
             self.run()
 
@@ -1185,8 +1188,8 @@ class Blotter():
             "csv_path": None
         }
 
-        print('lyalgox3->broker_backfill.8')
         # if connection is active - request data
+        print('lyalgox3->broker_backfill.8 params is: {}'.format(pformat(params, indent=8, compact=True)))
         self.ibConn.requestHistoricalData(**params)
 
         print('lyalgox3->broker_backfill.9')
