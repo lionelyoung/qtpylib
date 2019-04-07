@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from qtpylib.blotter import Blotter
 import configparser
 import os

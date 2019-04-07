@@ -114,7 +114,7 @@ class Algo(Broker):
                  continuous=True, blotter=None, sms=None, log=None,
                  backtest=False, start=None, end=None, data=None, output=None,
                  ibclient=998, ibport=4001, ibserver="localhost", **kwargs):
-        ly_logger.info("ly algo.py 01 instruments: {}".format(instruments))
+        ly_logger.info("01|instruments={}|resolution={}".format(instruments, resolution))
 
         # detect algo name
         self.name = str(self.__class__).split('.')[-1].split("'")[0]
@@ -773,6 +773,7 @@ class Algo(Broker):
             bars = tools.resample(
                 self.ticks, self.resolution, tz=self.timezone)
 
+            ly_logger.info('call _base_bar_handler')
             if len(bars.index) > self.tick_bar_count > 0 or stale_tick:
                 self.record_ts = tick.index[0]
                 self._base_bar_handler(bars[bars['symbol'] == symbol][-1:])
@@ -831,6 +832,7 @@ class Algo(Broker):
                                                 window=self.bar_window)
         else:
             # add the bar and resample to resolution
+            ly_logger.info('add the bar and resample to resolution') 
             if self.threads == 0:
                 self.bars = self._update_window(self.bars, bar,
                                                 window=self.bar_window,
@@ -860,6 +862,7 @@ class Algo(Broker):
             newbar = self.bar_hashes[symbol] != this_bar_hash
         self.bar_hashes[symbol] = this_bar_hash
 
+        ly_logger.info('Create a bar')
         if newbar and handle_bar:
             if self.bars[(self.bars['symbol'] == symbol) | (
                     self.bars['symbol_group'] == symbol)].empty:
@@ -885,6 +888,7 @@ class Algo(Broker):
             df = df.append(data, sort=True)
 
         # resample
+        ly_logger.info('_update_window resample|resolution={}'.format(resolution))
         if resolution:
             tz = str(df.index.tz)
             # try:
