@@ -8,12 +8,12 @@ import os
 import sys
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
-FORMAT = '%(asctime)-15s %(levelname)-5s -> %(message)s'
+FORMAT = '%(asctime)-15s %(levelname)-5s [%(name)s] -> %(message)s'
 
 logging.basicConfig(format=FORMAT)
 logger = logging.getLogger(__name__)
 
-class CrossOver(Algo):
+class QFSimpleCross(Algo):
 
     def on_start(self):
         pass
@@ -32,7 +32,7 @@ class CrossOver(Algo):
         pass
 
     def on_bar(self, instrument):
-        logger.info('LY: on_bar CrossOver {}'.format(datetime.now()))
+        logger.info('LY: on_bar QFSimpleCross {}'.format(datetime.now()))
         # get instrument history
         #bars = instrument.get_bars(lookback=30)
 
@@ -96,7 +96,10 @@ def make_args():
     parser.add_argument("-d", "--debug", action="store_true", help="increase output verbosity")
     parser.add_argument("--symbol", action="store")
     parser.add_argument("--preload", action="store")
-    parser.set_defaults(debug=True, symbol='CL', preload='1D')
+    parser.add_argument("--resolution", action="store")
+    parser.add_argument("--bar-window", action="store", type=int)
+    parser.add_argument("--ibport", action="store", type=int)
+    parser.set_defaults(debug=False, symbol='CL', preload='1D', resolution='1T', bar_window=50, ibport=7497)
     args = parser.parse_args()
     return args
 
@@ -107,26 +110,38 @@ if __name__ == "__main__":
 
     if args.debug:
         logger.setLevel(logging.DEBUG)
+        logging.getLogger('ly_algo').setLevel(logging.DEBUG)
+        logging.getLogger('ly_broker').setLevel(logging.DEBUG)
+        logging.getLogger('ly_blotter').setLevel(logging.DEBUG)
+        logging.getLogger('ly_workflow').setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
+        logging.getLogger('ly_algo').setLevel(logging.INFO)
+        logging.getLogger('ly_broker').setLevel(logging.INFO)
+        logging.getLogger('ly_blotter').setLevel(logging.INFO)
+        logging.getLogger('ly_workflow').setLevel(logging.INFO)
 
-    logger.debug("It works!")
 
-    logger.info('Getting ready to run: {}'.format(args.symbol))
-
+    # Make tuple in qtpy format
     ib_tuple = futures.make_tuple(args.symbol)
-    logger.info("Tuple is {}".format(ib_tuple))
 
-    strategy = CrossOver(
-        instruments = [ ib_tuple, ],
-        resolution  = "1T",
-        bar_window  = 50,
-        preload     = args.preload, # 1W, 1D, 3D
-        ibport    = 7497,
-        blotter='MainBlotter',
-    )
+    # Display settings
+    logger.info('Settings')
+    logger.info('--------')
+    logger.info('\tSymbol: {}'.format(args.symbol))
+    logger.info('\tResolution: {}'.format(args.resolution))
+    logger.info('\tPreload: {}'.format(args.preload))
+    logger.info('\tFutures tuple: {}'.format(ib_tuple))
 
-    logger.info("Running...")
+    # Setup Algo
+    strategy = QFSimpleCross(instruments=[ ib_tuple, ],
+                             resolution=args.resolution,
+                             bar_window=args.bar_window,
+                             preload=args.preload,
+                             ibport=args.ibport,
+                             blotter='MainBlotter')
+
+    # Run
+    logger.info("Run")
     strategy.run()
-    logger.info('Finished')
 

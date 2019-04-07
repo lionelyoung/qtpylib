@@ -58,6 +58,10 @@ from qtpylib import (
 
 ## LY pformat
 from pprint import pformat
+#################
+### LY Logger ###
+#################
+ly_logger = logging.getLogger('ly_blotter')
 
 # =============================================
 # check min, python version
@@ -321,7 +325,7 @@ class Blotter():
     # -------------------------------------------
     def ibCallback(self, caller, msg, **kwargs):
 
-        #print("ly debug blotter ibCallback 01|caller={}|msg={}|kwargs={}".format(caller, msg, pformat(kwargs)))
+        #ly_logger.debug("ly debug blotter ibCallback 01|caller={}|msg={}|kwargs={}".format(caller, msg, pformat(kwargs)))
 
         if caller == "handleConnectionClosed":
             self.log_blotter.info("Lost connection to Interactive Brokers...")
@@ -367,13 +371,13 @@ class Blotter():
 
         # LY DEBUG
         if not self.ly_already_ran_print or kwargs["completed"]:
-            print('lyalgox3->broker_backfill.9->ohlc.1 symbol: {} kwargs:{}'.format(symbol, pformat(kwargs)))
+            ly_logger.info('lyalgox3->broker_backfill.9->ohlc.1 symbol: {} kwargs:{}'.format(symbol, pformat(kwargs)))
             self.ly_already_ran_print = True
 
         if kwargs["completed"]:
             self.backfilled_symbols.append(symbol)
             tickers = list({v: k for k, v in self.ibConn.tickerIds.items() if v.upper() != "SYMBOL"}.keys())
-            print(tickers)
+            ly_logger.info(tickers)
 
             # LY debug, for some reason these are in
             # Remove 'ES' and 'ES12019_FUT'
@@ -385,12 +389,12 @@ class Blotter():
 
                 # Remove ES12019_FUT and xx1xxxxxxxx
                 if len(ticker) >= 3:
-                    print('ly debug ticker is {}|ticker[2] is {}'.format(ticker, ticker[2]))
+                    ly_logger.info('ly debug ticker is {}|ticker[2] is {}'.format(ticker, ticker[2]))
                     if ticker[2] == '1':
                         tickers.remove(ticker)
 
             tickers = set(tickers)
-            print('lydebug|tickers={}|backfilled={}|set(self.backfilled_symbols)={}'.format(tickers,
+            ly_logger.info('lydebug|tickers={}|backfilled={}|set(self.backfilled_symbols)={}'.format(tickers,
                                                                                             self.backfilled_symbols,
                                                                                             set(self.backfilled_symbols)))
             if tickers == set(self.backfilled_symbols):
@@ -398,12 +402,12 @@ class Blotter():
                 #if ticker in set(self.backfilled_symbols):
                 self.backfilled = True
                 print(".")
-                print('ly debug: backfilled is true')
+                ly_logger.info('ly debug: backfilled is true')
 
             try:
                 self.ibConn.cancelHistoricalData(
                     self.ibConn.contracts[msg.reqId])
-                print('ly debug: cancelled Historical data')
+                ly_logger.info('ly debug: cancelled Historical data')
             except Exception as e:
                 pass
 
@@ -1172,7 +1176,7 @@ class Blotter():
                 False for "won't backfill" / True for "backfilling, please wait"
         """
 
-        print('lyalgox3->broker_backfill.1')
+        ly_logger.info('lyalgox3->broker_backfill.1')
         data.sort_index(inplace=True)
 
         # currenly only supporting minute-data
@@ -1180,12 +1184,12 @@ class Blotter():
             self.backfilled = True
             return None
 
-        print('lyalgox3->broker_backfill.2')
+        ly_logger.info('lyalgox3->broker_backfill.2')
         # missing history?
         start_date = parse_date(start)
         end_date = parse_date(end) if end else datetime.utcnow()
 
-        print('lyalgox3->broker_backfill.3')
+        ly_logger.info('lyalgox3->broker_backfill.3')
         if data.empty:
             first_date = datetime.utcnow()
             last_date = datetime.utcnow()
@@ -1193,24 +1197,24 @@ class Blotter():
             first_date = tools.datetime64_to_datetime(data.index.values[0])
             last_date = tools.datetime64_to_datetime(data.index.values[-1])
 
-        print('lyalgox3->broker_backfill.4')
+        ly_logger.info('lyalgox3->broker_backfill.4')
         ib_lookback = None
         if start_date < first_date:
             ib_lookback = tools.ib_duration_str(start_date)
         elif end_date > last_date:
             ib_lookback = tools.ib_duration_str(last_date)
 
-        print('lyalgox3->broker_backfill.5')
+        ly_logger.info('lyalgox3->broker_backfill.5')
         if not ib_lookback:
             self.backfilled = True
             return None
 
-        print('lyalgox3->broker_backfill.6')
+        ly_logger.info('lyalgox3->broker_backfill.6')
         self.backfill_resolution = "1 min" if resolution[-1] not in (
             "K", "V", "S") else "1 sec"
         self.log_blotter.warning("Backfilling historical data from IB...")
 
-        print('lyalgox3->broker_backfill.7')
+        ly_logger.info('lyalgox3->broker_backfill.7')
         # request parameters
         params = {
             "lookback": ib_lookback,
@@ -1222,15 +1226,15 @@ class Blotter():
         }
 
         # if connection is active - request data
-        print('lyalgox3->broker_backfill.8 params is: {}'.format(pformat(params, indent=8, compact=True)))
+        ly_logger.info('lyalgox3->broker_backfill.8 params is: {}'.format(pformat(params, indent=8, compact=True)))
         self.ibConn.requestHistoricalData(**params)
 
-        print('lyalgox3->broker_backfill.9')
+        ly_logger.info('lyalgox3->broker_backfill.9')
         # wait for backfill to complete
         while not self.backfilled:
             time.sleep(0.01)
 
-        print('lyalgox3->broker_backfill.10')
+        ly_logger.info('lyalgox3->broker_backfill.10')
         # otherwise, pass the parameters to the caller
         return True
 
