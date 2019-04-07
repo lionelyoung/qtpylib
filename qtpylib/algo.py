@@ -55,6 +55,10 @@ asynctools.multitasking.createPool(__name__, __threads__)
 
 # =============================================
 
+#################
+### LY Logger ###
+#################
+ly_logger = logging.getLogger('ly_algo')
 
 class Algo(Broker):
     """Algo class initilizer (sub-class of Broker)
@@ -110,7 +114,7 @@ class Algo(Broker):
                  continuous=True, blotter=None, sms=None, log=None,
                  backtest=False, start=None, end=None, data=None, output=None,
                  ibclient=998, ibport=4001, ibserver="localhost", **kwargs):
-        print("ly algo.py 01 instruments: {}".format(instruments))
+        ly_logger.info("01|instruments={}|resolution={}".format(instruments, resolution))
 
         # detect algo name
         self.name = str(self.__class__).split('.')[-1].split("'")[0]
@@ -356,19 +360,20 @@ class Algo(Broker):
 
             # history needs backfilling?
             # self.blotter.backfilled = True
-            print('lyalgox1')
+
+            ly_logger.info('lyalgox1')
             if not self.blotter.backfilled:
-                print('lyalgox2')
+                ly_logger.info('lyalgox2')
                 # "loan" Blotter our ibConn
                 self.blotter.ibConn = self.ibConn
 
-                print('lyalgox3')
+                ly_logger.info('lyalgox3')
                 # call the back fill
                 self.blotter.backfill(data=history,
                                       resolution=self.resolution,
                                       start=start, end=end)
 
-                print('lyalgox4')
+                ly_logger.info('lyalgox4')
                 # re-get history from db
                 history = self.blotter.history(
                     symbols=self.symbols,
@@ -379,11 +384,11 @@ class Algo(Broker):
                     continuous=self.continuous
                 )
 
-                print('lyalgox5')
+                ly_logger.info('lyalgox5')
                 # take our ibConn back :)
                 self.blotter.ibConn = None
 
-        print('lyalgox6')
+        ly_logger.info('lyalgox6')
 
         # optimize pandas
         if not history.empty:
@@ -768,6 +773,7 @@ class Algo(Broker):
             bars = tools.resample(
                 self.ticks, self.resolution, tz=self.timezone)
 
+            ly_logger.info('call _base_bar_handler')
             if len(bars.index) > self.tick_bar_count > 0 or stale_tick:
                 self.record_ts = tick.index[0]
                 self._base_bar_handler(bars[bars['symbol'] == symbol][-1:])
@@ -826,6 +832,7 @@ class Algo(Broker):
                                                 window=self.bar_window)
         else:
             # add the bar and resample to resolution
+            ly_logger.info('add the bar and resample to resolution') 
             if self.threads == 0:
                 self.bars = self._update_window(self.bars, bar,
                                                 window=self.bar_window,
@@ -855,6 +862,7 @@ class Algo(Broker):
             newbar = self.bar_hashes[symbol] != this_bar_hash
         self.bar_hashes[symbol] = this_bar_hash
 
+        ly_logger.info('Create a bar')
         if newbar and handle_bar:
             if self.bars[(self.bars['symbol'] == symbol) | (
                     self.bars['symbol_group'] == symbol)].empty:
@@ -880,6 +888,7 @@ class Algo(Broker):
             df = df.append(data, sort=True)
 
         # resample
+        ly_logger.info('_update_window resample|resolution={}'.format(resolution))
         if resolution:
             tz = str(df.index.tz)
             # try:

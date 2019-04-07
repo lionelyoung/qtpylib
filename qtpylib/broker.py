@@ -59,6 +59,11 @@ if sys.version_info < (3, 4):
 tools.createLogger(__name__)
 # =============================================
 
+#################
+### LY Logger ###
+#################
+ly_logger = logging.getLogger('ly_broker')
+
 
 class Broker():
     """Broker class initilizer (abstracted, parent class of ``Algo``)
@@ -79,7 +84,7 @@ class Broker():
 
     def __init__(self, instruments, ibclient=998, ibport=4001, ibserver="localhost"):
 
-        print("ly broker.py 01 instruments: {}".format(instruments))
+        ly_logger.info("ly broker.py 01 instruments: {}".format(instruments))
 
         # detect running strategy
         self.strategy = str(self.__class__).split('.')[-1].split("'")[0]
@@ -136,7 +141,7 @@ class Broker():
         instrument_tuples_dict = {}
         for instrument in instruments:
 
-            print("ly broker.py 02 instrument: {}".format(instrument))
+            ly_logger.info("ly broker.py 02 instrument: {}".format(instrument))
             try:
                 if isinstance(instrument, ezibpy.utils.Contract):
                     instrument = self.ibConn.contract_to_tuple(instrument)
@@ -151,7 +156,7 @@ class Broker():
         self.instruments = instrument_tuples_dict
         self.symbols = list(self.instruments.keys())
         self.instrument_combos = {}
-        print("ly broker.py 03|self.instruments={}|self.symbols={}".format(self.instruments, self.symbols))
+        ly_logger.info("ly broker.py 03|self.instruments={}|self.symbols={}".format(self.instruments, self.symbols))
 
         # -----------------------------------
         # track orders & trades
@@ -161,7 +166,7 @@ class Broker():
         # shortcut
         self.account = self.ibConn.account
 
-        print("ly broker.py 04|self.ibConn.symbol_orders={}".format(self.ibConn.symbol_orders))
+        ly_logger.info("ly broker.py 04|self.ibConn.symbol_orders={}".format(self.ibConn.symbol_orders))
         # use: self.orders.pending...
         self.orders = tools.make_object(
             by_tickerid=self.ibConn.orders,
@@ -272,7 +277,7 @@ class Broker():
     # @abstractmethod
     def ibCallback(self, caller, msg, **kwargs):
 
-        #print("ly debug broker ibCallback 01|caller={}|msg={}|kwargs={}".format(caller, msg, pformat(kwargs)))
+        ly_logger.debug("ly debug broker ibCallback 01|caller={}|msg={}|kwargs={}".format(caller, msg, pformat(kwargs)))
         if caller == "handleHistoricalData":
             # transmit "as-is" to blotter for handling
             self.blotter.ibCallback("handleHistoricalData", msg, **kwargs)

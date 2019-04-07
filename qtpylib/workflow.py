@@ -37,6 +37,10 @@ from qtpylib.blotter import (
     load_blotter_args, get_symbol_id,
     mysql_insert_tick, mysql_insert_bar
 )
+#################
+### LY Logger ###
+#################
+ly_logger = logging.getLogger('ly_workflow')
 
 _IB_HISTORY_DOWNLOADED = False
 
@@ -52,7 +56,7 @@ tools.createLogger(__name__)  # .setLevel(logging.DEBUG)
 
 def ibCallback(caller, msg, **kwargs):
     global _IB_HISTORY_DOWNLOADED
-    print("ly debug workflow ibCallback 01|caller={}|msg={}|kwargs={}".format(caller, msg, pformat(kwargs)))
+    ly_logger.info("ly debug workflow ibCallback 01|caller={}|msg={}|kwargs={}".format(caller, msg, pformat(kwargs)))
     if caller == "handleHistoricalData":
         if kwargs["completed"]:
             _IB_HISTORY_DOWNLOADED = True
@@ -103,7 +107,7 @@ def get_data_ib(instrument, start, resolution="1 min",
     contract_string = ibConn.contractString(instrument)
     contract = ibConn.createContract(instrument)
 
-    print("ly debug workflow get_data_ib 01|contract={}".format(contract))
+    ly_logger.info("ly debug workflow get_data_ib 01|contract={}".format(contract))
     ibConn.requestHistoricalData(contracts=[contract],
                                  data="TRADES", resolution=resolution,
                                  lookback=tools.ib_duration_str(start),
