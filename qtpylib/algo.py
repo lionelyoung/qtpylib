@@ -888,7 +888,7 @@ class Algo(Broker):
             df = df.append(data, sort=True)
 
         # resample
-        ly_logger.info('_update_window resample|resolution={}'.format(resolution))
+        ly_logger.debug('_update_window resample|resolution={}'.format(resolution))
         if resolution:
             tz = str(df.index.tz)
             # try:
