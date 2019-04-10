@@ -6,6 +6,9 @@ from qtpylib.algo import Algo
 import logging
 import os
 import sys
+from pprint import pformat
+import numpy as np
+
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 FORMAT = '%(asctime)-15s %(levelname)-5s [%(name)s] -> %(message)s'
@@ -28,30 +31,51 @@ class QFSimpleCross(Algo):
         pass
 
     def on_tick(self, instrument):
-        logger.info('LY: on_tick {}'.format(datetime.now()))
+        logger.info('TICK {}'.format(datetime.now()))
         pass
 
     def on_bar(self, instrument):
-        logger.info('LY: on_bar QFSimpleCross {}'.format(datetime.now()))
-        # get instrument history
-        #bars = instrument.get_bars(lookback=30)
 
-        # or get all instruments history
-        #bars = self.bars[-20:]
-        bars = self.bars
+        # Features
+        features = {'sma': None,
+                    'side': None,
+                    'ai_squeeze':  -0.176471,
+                    'ai_explosive': -0.003112,
+                    }
+
+        # Set subset of bars
+        bars = self.bars[-60:]
 
         # skip first 20 days to get full windows
-        logger.info('LY: len(bars) is {}'.format(len(bars)))
-        #logger.info('LY: last bar is {}'.format(bars[-1]))
-        #if len(bars) < 20:
-            #return
+        logger.info('01 Got bar')
+        if len(bars) < 50:
+            logger.info('Skip bars')
+            return
+
+        logger.info('02 Got bar')
 
         # compute averages using internal rolling_mean
-        bars['short_ma'] = bars['close'].rolling_mean(window=10)
-        bars['long_ma']  = bars['close'].rolling_mean(window=20)
+        bars['short_ma'] = bars['close'].rolling_mean(window=20)
+        bars['long_ma']  = bars['close'].rolling_mean(window=50)
 
-        logger.info('LY: short_ma is {}'.format(bars['short_ma'][-1]))
-        logger.info(bars.tail())
+        # Features
+        short_above_long = bars['short_ma'] > bars['long_ma']
+        bars['sma'] = np.where(short_above_long, 1, -1)
+        close_higher = bars['close'] > bars['close'].shift(5)
+        bars['side'] = np.where(close_higher, 1, -1)
+
+        last_bar = bars.tail(1)
+
+        logger.info('03 sma')
+        # Feature: sma
+        #import pdb; pdb.set_trace() 
+        features['sma'] = int(last_bar['sma'])
+        logger.info('Features: {}'.format(pformat(features)))
+
+        logger.info('04 side')
+        # Feature: side
+        features['side'] = int(last_bar['side'])
+        logger.info('Features: {}'.format(pformat(features)))
 
         # get current position data
         positions = instrument.get_positions()
@@ -99,7 +123,7 @@ def make_args():
     parser.add_argument("--resolution", action="store")
     parser.add_argument("--bar-window", action="store", type=int)
     parser.add_argument("--ibport", action="store", type=int)
-    parser.set_defaults(debug=False, symbol='CL', preload='1D', resolution='1T', bar_window=50, ibport=7497)
+    parser.set_defaults(debug=False, symbol='CL', preload='1D', resolution='1T', bar_window=60, ibport=7497)
     args = parser.parse_args()
     return args
 

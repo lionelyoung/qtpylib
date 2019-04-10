@@ -376,11 +376,14 @@ class Blotter():
 
         if kwargs["completed"]:
             self.backfilled_symbols.append(symbol)
-            tickers = list({v: k for k, v in self.ibConn.tickerIds.items() if v.upper() != "SYMBOL"}.keys())
+            expired = ['CLJ2019_FUT']
+            ibconn_tickers = list({v: k for k, v in self.ibConn.tickerIds.items() if v.upper() != "SYMBOL"}.keys())
+            tickers = [ticker for ticker in ibconn_tickers if ticker not in expired]
             ly_logger.info(tickers)
 
             # LY debug, for some reason these are in
             # Remove 'ES' and 'ES12019_FUT'
+            # Remove expired: 'CLK2019_FUT'
             # Keep: 'ESM2019_FUT', 'CLK2019_FUT'
             for ticker in tickers:
                 # Remove ES
