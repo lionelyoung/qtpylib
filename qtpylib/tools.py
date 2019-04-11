@@ -36,6 +36,9 @@ from dateutil import relativedelta
 from dateutil.parser import parse as parse_date
 from pytz import timezone
 
+import logging
+ly_logger = logging.getLogger('ly_tools')
+
 # for re-export
 from ezibpy.utils import (
     createLogger, contract_expiry_from_symbol,
@@ -572,11 +575,13 @@ def fix_timezone(df, freq, tz=None):
 
 
 # =============================================
-# resample baed on time / tick count
+# resample based on time / tick count
 # =============================================
 
 def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
              sync_last_timestamp=True):
+
+    ly_logger.info('resample 01|resolution={}'.format(resolution))
 
     def __finalize(data, tz=None):
         # figure out timezone
@@ -712,6 +717,7 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
         ['symbol', 'symbol_group', 'asset_class']].last()
     combined = []
 
+    ly_logger.info('resample 02|resolution={}'.format(resolution))
     if "K" in resolution:
         if periods > 1:
             for sym in meta_data.index.values:
@@ -756,6 +762,7 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
 
     # continue...
     else:
+        ly_logger.info('resample 03|resolution={}'.format(resolution))
         ticks_ohlc_dict = {
             'lastsize':       'sum',
             'opt_price':      'last',
@@ -788,6 +795,7 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
         }
 
         for sym in meta_data.index.values:
+            ly_logger.info('resample 03|resolution={}'.format(resolution))
 
             if "last" in data.columns:
                 tick_dict = {}
@@ -806,6 +814,7 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
                 symdata['high'] = ohlc['high']
                 symdata['low'] = ohlc['low']
                 symdata['close'] = ohlc['close']
+                ly_logger.info('resample 04|resolution={}'.format(resolution))
 
             else:
                 bar_dict = {}
@@ -845,6 +854,8 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
                 if dropna:
                     symdata.dropna(inplace=True)
 
+                ly_logger.info('resample 04|resolution={}'.format(resolution))
+
             symdata['symbol'] = sym
             symdata['symbol_group'] = meta_data[meta_data.index ==
                                                 sym]['symbol_group'].values[0]
@@ -861,6 +872,7 @@ def resample(data, resolution="1T", tz=None, ffill=True, dropna=False,
 
         data = pd.concat(combined, sort=True)
         data['volume'] = data['volume'].astype(int)
+        ly_logger.info('good up to here')
 
     return __finalize(data, tz)
 

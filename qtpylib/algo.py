@@ -148,6 +148,7 @@ class Algo(Broker):
             self.tick_window = 1000
         self.bar_window = bar_window if bar_window > 0 else 100
         self.resolution = resolution.upper().replace("MIN", "T")
+        ly_logger.info('Detected self.resolution as: {}'.format(self.resolution))
         self.timezone = timezone
         self.preload = preload
         self.continuous = continuous
@@ -301,6 +302,8 @@ class Algo(Broker):
 
         history = pd.DataFrame()
 
+        ly_logger.info('run self.resolution: {}'.format(self.resolution))
+
         # get history from csv dir
         if self.backtest and self.backtest_csv:
             kind = "TICK" if self.resolution[-1] in ("S", "K", "V") else "BAR"
@@ -349,6 +352,7 @@ class Algo(Broker):
                 self.preload)
             end = self.backtest_end if self.backtest else None
 
+            ly_logger.info('run 01 history self.resolution: {}'.format(self.resolution))
             history = self.blotter.history(
                 symbols=self.symbols,
                 start=start,
@@ -357,11 +361,12 @@ class Algo(Broker):
                 tz=self.timezone,
                 continuous=self.continuous
             )
+            ly_logger.info('run 02 history self.resolution: {}'.format(self.resolution))
 
             # history needs backfilling?
             # self.blotter.backfilled = True
 
-            ly_logger.info('lyalgox1')
+            ly_logger.info('run 03 history self.resolution: {}'.format(self.resolution))
             if not self.blotter.backfilled:
                 ly_logger.info('lyalgox2')
                 # "loan" Blotter our ibConn
@@ -387,6 +392,8 @@ class Algo(Broker):
                 ly_logger.info('lyalgox5')
                 # take our ibConn back :)
                 self.blotter.ibConn = None
+
+        ly_logger.info('run 04 history self.resolution: {}'.format(self.resolution))
 
         ly_logger.info('lyalgox6')
 
@@ -423,6 +430,9 @@ class Algo(Broker):
             ly_logger.info('09 after on_start')
 
             # listen for RT data
+            ly_logger.info('run 05 history self.resolution: {}'.format(self.resolution))
+            #import pdb; pdb.set_trace()
+            # LY TODO: stream bar handler ruins the resolution
             self.blotter.stream(
                 symbols=self.symbols,
                 tz=self.timezone,
@@ -431,7 +441,7 @@ class Algo(Broker):
                 bar_handler=self._bar_handler,
                 book_handler=self._book_handler
             )
-
+            ly_logger.info('run 06 history self.resolution: {}'.format(self.resolution))
             ly_logger.info('10 blotter stream')
 
     # ---------------------------------------
@@ -777,6 +787,7 @@ class Algo(Broker):
                 self.ticks = self._thread_safe_merge(
                     symbol, self.ticks, self_ticks)  # assign back
         else:
+            ly_logger.info('_tick_handler resample')
             self.ticks = self._update_window(self.ticks, tick)
             # bars = tools.resample(self.ticks, self.resolution)
             bars = tools.resample(
@@ -841,7 +852,8 @@ class Algo(Broker):
                                                 window=self.bar_window)
         else:
             # add the bar and resample to resolution
-            ly_logger.info('add the bar and resample to resolution') 
+            ly_logger.info('add the bar and resample to resolution: {}|threads={}'.format(self.resolution, self.threads))
+
             if self.threads == 0:
                 self.bars = self._update_window(self.bars, bar,
                                                 window=self.bar_window,
@@ -871,6 +883,11 @@ class Algo(Broker):
             newbar = self.bar_hashes[symbol] != this_bar_hash
         self.bar_hashes[symbol] = this_bar_hash
 
+        ly_logger.info('hash_string={}|this_bar_hash={}|self.bar_hashes={}'.format(hash_string, this_bar_hash, self.bar_hashes))
+
+        # LY TODO: Handle resolution here for firing on_bar
+        #import pdb; pdb.set_trace()
+
         ly_logger.info('Create a bar')
         if newbar and handle_bar:
             if self.bars[(self.bars['symbol'] == symbol) | (
@@ -897,7 +914,9 @@ class Algo(Broker):
             df = df.append(data, sort=True)
 
         # resample
-        ly_logger.debug('_update_window resample|resolution={}'.format(resolution))
+        # LY TODO Resolution fix
+        #ly_logger.info('_update_window resample|resolution={}'.format(resolution))
+
         if resolution:
             tz = str(df.index.tz)
             # try:

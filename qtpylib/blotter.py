@@ -1128,10 +1128,15 @@ class Blotter():
                     # add options columns
                     df = tools.force_options_columns(df)
 
+                    #ly_logger.info('data[kind]={}'.format(data['kind']))
+
                     if data['kind'] == "TICK":
                         if tick_handler is not None:
                             tick_handler(df)
                     elif data['kind'] == "BAR":
+                        # LY: History is OK -- does this bar handler ruin the resolution?
+                        # LY: Does ezPY set the resolution for bar streaming or just resample ticks?
+                        import pdb; pdb.set_trace()
                         if bar_handler is not None:
                             bar_handler(df)
 
@@ -1565,6 +1570,8 @@ def mysql_insert_bar(data, symbol_id, dbcurr):
 
 def prepare_history(data, resolution="1T", tz="UTC", continuous=True):
 
+
+    ly_logger.info('prepare_history 01|resolution={}'.format(resolution))
     # setup dataframe
     data.set_index('datetime', inplace=True)
     data.index = pd.to_datetime(data.index, utc=True)
@@ -1595,7 +1602,9 @@ def prepare_history(data, resolution="1T", tz="UTC", continuous=True):
         data.groupby([data.index, 'symbol'], as_index=False
                      ).last().set_index('datetime').dropna()
 
+    #import pdb; pdb.set_trace()
     data = tools.resample(data, resolution, tz)
+    #import pdb; pdb.set_trace()
     return data
 
 
