@@ -396,7 +396,10 @@ class Algo(Broker):
             history['symbol_group'] = history['symbol_group'].astype('category')
             history['asset_class'] = history['asset_class'].astype('category')
 
+        ly_logger.info('07')
+
         if self.backtest:
+            ly_logger.info('08 BACKTEST')
             # initiate strategy
             self.on_start()
 
@@ -406,14 +409,18 @@ class Algo(Broker):
             self.blotter.drip(history, drip_handler)
 
         else:
+            ly_logger.info('08 LIVE')
             # place history self.bars
             self.bars = history
 
             # add instruments to blotter in case they do not exist
             self.blotter.register(self.instruments)
 
+            ly_logger.info('09 after register')
+
             # initiate strategy
             self.on_start()
+            ly_logger.info('09 after on_start')
 
             # listen for RT data
             self.blotter.stream(
@@ -424,6 +431,8 @@ class Algo(Broker):
                 bar_handler=self._bar_handler,
                 book_handler=self._book_handler
             )
+
+            ly_logger.info('10 blotter stream')
 
     # ---------------------------------------
     @abstractmethod

@@ -8,7 +8,9 @@ import os
 import sys
 from pprint import pformat
 import numpy as np
+import pandas as pd
 from sklearn.externals import joblib
+import time
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -40,7 +42,9 @@ class QFSimpleCross(Algo):
         pass
 
     def on_tick(self, instrument):
-        logger.info('TICK {}'.format(datetime.now()))
+        #logger.debug('TICK {}'.format(datetime.now()))
+        sec = int(time.time()) % 10
+        print(sec, end='', flush=True)
 
     def on_bar(self, instrument):
 
@@ -88,7 +92,7 @@ class QFSimpleCross(Algo):
         # Create temp dataframe with freatures
         logger.info('Classifier is: {}'.format(self.clf))
 
-        new_data = pd.DataFrame(columns=['rrr', 'width', ])
+        new_data = pd.DataFrame(columns=['ai_squeeze', 'ai_explosive', 'side', 'sma'])
         new_data.loc[len(new_data)] = [features['ai_squeeze'],
                                        features['ai_explosive'],
                                        features['side'],
@@ -105,45 +109,17 @@ class QFSimpleCross(Algo):
         # TRADE #
         #########
 
-        # Take the trade
-        if my_predict:
-            logger.info("TRADE! {}".format(my_predict))
-        else:
-            logger.info("NO TRADE")
-
-        if not instrument.pending_orders and positions["position"] == 0:
+        if my_predict and not instrument.pending_orders and positions["position"] == 0:
             logger.info('BUY Every Bar {}'.format(datetime.now()))
             instrument.buy(1)
             self.record(all_buy=1)
+        else:
+            logger.info("NO TRADE")
 
         if positions["position"] != 0:
             logger.info('CLOSE Every Bar {}'.format(datetime.now()))
             instrument.exit()
             self.record(all_buy=-1)
-
-        # trading logic - entry signal
-        if bars['short_ma'].crossed_above(bars['long_ma'])[-1]:
-            if not instrument.pending_orders and positions["position"] == 0:
-
-                logger.info('LY: instrument BUY {}'.format(datetime.now()))
-                # buy one contract
-                instrument.buy(1)
-
-                logger.info('LY: recording ma_cross=1')
-                # record values for later analysis
-                self.record(ma_cross=1)
-
-        # trading logic - exit signal
-        elif bars['short_ma'].crossed_below(bars['long_ma'])[-1]:
-            if positions["position"] != 0:
-
-                logger.info('LY: instrument EXIT {}'.format(datetime.now()))
-                # exit / flatten position
-                instrument.exit()
-
-                # record values for later analysis
-                logger.info('LY: recording ma_cross=-1')
-                self.record(ma_cross=-1)
 
 def make_args():
     import argparse
