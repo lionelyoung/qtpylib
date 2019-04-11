@@ -1071,6 +1071,8 @@ class Blotter():
     # -------------------------------------------
     def stream(self, symbols, tick_handler=None, bar_handler=None,
                quote_handler=None, book_handler=None, tz="UTC"):
+
+        ly_logger.info('Streaming')
         # load runtime/default data
         if isinstance(symbols, str):
             symbols = symbols.split(',')

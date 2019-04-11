@@ -8,6 +8,9 @@ import os
 import sys
 from pprint import pformat
 import numpy as np
+import pandas as pd
+from sklearn.externals import joblib
+import time
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -17,6 +20,14 @@ logging.basicConfig(format=FORMAT)
 logger = logging.getLogger(__name__)
 
 class QFSimpleCross(Algo):
+
+    def __init__(self, **kwargs):
+        Algo.__init__(self, **kwargs)
+        if kwargs['classifier']:
+            self.clf = kwargs['classifier']
+        else:
+            self.clf = None
+        logger.info('Initialize with classifier: {}'.format(self.clf))
 
     def on_start(self):
         pass
@@ -31,16 +42,17 @@ class QFSimpleCross(Algo):
         pass
 
     def on_tick(self, instrument):
-        logger.info('TICK {}'.format(datetime.now()))
-        pass
+        #logger.debug('TICK {}'.format(datetime.now()))
+        sec = int(time.time()) % 10
+        print(sec, end='', flush=True)
 
     def on_bar(self, instrument):
 
         # Features
-        features = {'sma': None,
-                    'side': None,
-                    'ai_squeeze':  -0.176471,
+        features = {'ai_squeeze':  -0.176471,
                     'ai_explosive': -0.003112,
+                    'side': None,
+                    'sma': None,
                     }
 
         # Set subset of bars
@@ -77,42 +89,37 @@ class QFSimpleCross(Algo):
         features['side'] = int(last_bar['side'])
         logger.info('Features: {}'.format(pformat(features)))
 
+        # Create temp dataframe with freatures
+        logger.info('Classifier is: {}'.format(self.clf))
+
+        new_data = pd.DataFrame(columns=['ai_squeeze', 'ai_explosive', 'side', 'sma'])
+        new_data.loc[len(new_data)] = [features['ai_squeeze'],
+                                       features['ai_explosive'],
+                                       features['side'],
+                                       features['sma']]
+
+        my_predict = rf.predict(new_data)
+        logger.info('Prediction is: {}'.format(my_predict))
+
         # get current position data
         positions = instrument.get_positions()
+        logger.info('Positions are: {}'.format(positions))
 
-        if not instrument.pending_orders and positions["position"] == 0:
-            logger.info('LY: instrument BUY every bar {}'.format(datetime.now()))
+        #########
+        # TRADE #
+        #########
+
+        if my_predict and not instrument.pending_orders and positions["position"] == 0:
+            logger.info('BUY Every Bar {}'.format(datetime.now()))
             instrument.buy(1)
             self.record(all_buy=1)
+        else:
+            logger.info("NO TRADE")
 
         if positions["position"] != 0:
-            logger.info('LY: instrument EXIT {}'.format(datetime.now()))
+            logger.info('CLOSE Every Bar {}'.format(datetime.now()))
             instrument.exit()
             self.record(all_buy=-1)
-
-        # trading logic - entry signal
-        if bars['short_ma'].crossed_above(bars['long_ma'])[-1]:
-            if not instrument.pending_orders and positions["position"] == 0:
-
-                logger.info('LY: instrument BUY {}'.format(datetime.now()))
-                # buy one contract
-                instrument.buy(1)
-
-                logger.info('LY: recording ma_cross=1')
-                # record values for later analysis
-                self.record(ma_cross=1)
-
-        # trading logic - exit signal
-        elif bars['short_ma'].crossed_below(bars['long_ma'])[-1]:
-            if positions["position"] != 0:
-
-                logger.info('LY: instrument EXIT {}'.format(datetime.now()))
-                # exit / flatten position
-                instrument.exit()
-
-                # record values for later analysis
-                logger.info('LY: recording ma_cross=-1')
-                self.record(ma_cross=-1)
 
 def make_args():
     import argparse
@@ -157,15 +164,21 @@ if __name__ == "__main__":
     logger.info('\tPreload: {}'.format(args.preload))
     logger.info('\tFutures tuple: {}'.format(ib_tuple))
 
+    # Load Model
+    rf = joblib.load(os.path.join(BASE_DIR, "../../bw_research/models/20190410-215948_02p02_DecisiveAlpha.pkl"))
+    logger.info('Classifier is: {}'.format(rf))
     # Setup Algo
     strategy = QFSimpleCross(instruments=[ ib_tuple, ],
                              resolution=args.resolution,
                              bar_window=args.bar_window,
                              preload=args.preload,
                              ibport=args.ibport,
-                             blotter='MainBlotter')
+                             blotter='MainBlotter',
+                             # My variables
+                             classifier=rf,)
 
     # Run
     logger.info("Run")
     strategy.run()
+
 
